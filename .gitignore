@@ -1,4 +1,14 @@
-/target
+# Miscellaneous
+*.class
+*.log
+*.lock
+*.gemini
+*.antigravity
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
 
 # Antigravity / Agent
 .gemini/
