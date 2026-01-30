@@ -344,6 +344,7 @@ dependencies = [
  "chrono",
  "dirs",
  "flutter_rust_bridge",
+ "futures",
  "hex",
  "maxminddb",
  "memmap2",

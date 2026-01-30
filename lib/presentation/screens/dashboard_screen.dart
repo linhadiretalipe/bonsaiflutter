@@ -1,53 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/providers/wallet_provider.dart';
+import '../../domain/models/transaction_model.dart';
 import 'receive_screen.dart';
 import 'send_screen.dart';
 
-class DashboardScreen extends ConsumerStatefulWidget {
+class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
-  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final transactionsAsync = ref.watch(transactionsProvider);
+    final balanceAsync = ref.watch(balanceProvider);
 
-class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  // Mock Data for Transactions
-  List<Map<String, dynamic>> _transactions = [
-    {
-      'id': '1',
-      'type': 'received',
-      'amount': '+0.005 BTC',
-      'date': 'Today, 10:23 AM',
-    },
-    {
-      'id': '2',
-      'type': 'sent',
-      'amount': '-0.001 BTC',
-      'date': 'Yesterday, 4:15 PM',
-    },
-    {
-      'id': '3',
-      'type': 'received',
-      'amount': '+0.050 BTC',
-      'date': 'Jan 24, 9:00 AM',
-    },
-    {
-      'id': '4',
-      'type': 'sent',
-      'amount': '-0.0025 BTC',
-      'date': 'Jan 22, 2:30 PM',
-    },
-    {
-      'id': '5',
-      'type': 'received',
-      'amount': '+0.010 BTC',
-      'date': 'Jan 20, 11:45 AM',
-    },
-  ];
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -117,24 +83,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       style: TextStyle(color: Colors.white54, fontSize: 14),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      '1.240567 BTC',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: -1.0,
+                    balanceAsync.when(
+                      data: (balance) => Text(
+                        '${balance.toStringAsFixed(6)} BTC',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: -1.0,
+                        ),
+                      ),
+                      loading: () => const CircularProgressIndicator(),
+                      error: (err, stack) => const Text(
+                        'Error',
+                        style: TextStyle(color: Colors.white),
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      '≈ \$54,320.00 USD',
-                      style: TextStyle(
-                        color: AppTheme.secondaryGreen,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                    balanceAsync.when(
+                      data: (balance) => Text(
+                        '≈ \$${(balance * 43000).toStringAsFixed(2)} USD', // Mock conversion
+                        style: const TextStyle(
+                          color: AppTheme.secondaryGreen,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
                     ),
+
                     const SizedBox(height: 24),
                     Row(
                       children: [
@@ -149,7 +127,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               );
 
                               // Check if a transaction was sent
-                              // Check if a transaction was sent
                               if (result != null &&
                                   result is Map &&
                                   result['success'] == true) {
@@ -158,19 +135,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     0;
                                 final double amountBtc =
                                     amountSats / 100000000.0;
+                                final address = result['address'] ?? '';
 
-                                // Add a mock 'sent' transaction to the top of the list
-                                setState(() {
-                                  _transactions.insert(0, {
-                                    'id': DateTime.now().millisecondsSinceEpoch
-                                        .toString(),
-                                    'type': 'sent',
-                                    'amount':
-                                        '-${amountBtc.toStringAsFixed(8)} BTC',
-                                    'date': 'Just now',
-                                    'isNew': true,
-                                  });
-                                });
+                                // Call the provider to send transaction
+                                // The provider handles adding it to the repo and refreshing the list
+                                await ref
+                                    .read(transactionsProvider.notifier)
+                                    .sendTransaction(amountBtc, address);
                               }
                             },
                             style: ElevatedButton.styleFrom(
@@ -234,18 +205,45 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
               // Recent Transactions List
               Expanded(
-                child: ListView.separated(
-                  itemCount: _transactions.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final tx = _transactions[index];
-                    return TransactionItem(
-                      key: ValueKey(tx['id']),
-                      data: tx,
-                      isNew: tx['isNew'] ?? false,
-                    );
-                  },
+                child: transactionsAsync.when(
+                  data: (transactions) => ListView.separated(
+                    itemCount: transactions.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final tx = transactions[index];
+                      // Calculate string amount
+                      final sign = tx.type == TransactionType.received
+                          ? '+'
+                          : '-';
+                      final amountStr =
+                          '$sign${tx.amountBtc.toStringAsFixed(8)} BTC';
+
+                      // Format Date simply for now
+                      final dateStr =
+                          "${tx.date.day}/${tx.date.month} ${tx.date.hour}:${tx.date.minute}";
+
+                      return TransactionItem(
+                        key: ValueKey(tx.id),
+                        data: {
+                          'type': tx.type == TransactionType.received
+                              ? 'received'
+                              : 'sent',
+                          'amount': amountStr,
+                          'date': dateStr, // Or use a proper formatter
+                        },
+                        isNew: tx.isNew,
+                      );
+                    },
+                  ),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (err, stack) => Center(
+                    child: Text(
+                      'Error: $err',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
                 ),
               ),
             ],

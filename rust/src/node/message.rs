@@ -11,7 +11,7 @@ use crate::node::error::BonsaiNodeError;
 use crate::node::stats_fetcher::NodeStatistics;
 
 #[derive(Clone)]
-pub(crate) enum NodeMessage {
+pub enum NodeMessage {
     #[allow(unused)]
     Start,
     Restart,

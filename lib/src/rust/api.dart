@@ -6,5 +6,94 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-String greet({required String name}) =>
-    RustLib.instance.api.crateApiGreet(name: name);
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `fmt`, `fmt`
+
+Future<void> startNodeService({
+  required String dataDir,
+  required String network,
+}) => RustLib.instance.api.crateApiStartNodeService(
+  dataDir: dataDir,
+  network: network,
+);
+
+Future<void> stopNodeService() =>
+    RustLib.instance.api.crateApiStopNodeService();
+
+Future<bool> isNodeRunning() => RustLib.instance.api.crateApiIsNodeRunning();
+
+Future<NodeStats?> getNodeStats() =>
+    RustLib.instance.api.crateApiGetNodeStats();
+
+class NodeStats {
+  final bool inIbd;
+  final int headers;
+  final int blocks;
+  final String userAgent;
+  final BigInt uptimeSecs;
+  final BigInt peersCount;
+  final List<PeerDetailedInfo> peers;
+
+  const NodeStats({
+    required this.inIbd,
+    required this.headers,
+    required this.blocks,
+    required this.userAgent,
+    required this.uptimeSecs,
+    required this.peersCount,
+    required this.peers,
+  });
+
+  @override
+  int get hashCode =>
+      inIbd.hashCode ^
+      headers.hashCode ^
+      blocks.hashCode ^
+      userAgent.hashCode ^
+      uptimeSecs.hashCode ^
+      peersCount.hashCode ^
+      peers.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NodeStats &&
+          runtimeType == other.runtimeType &&
+          inIbd == other.inIbd &&
+          headers == other.headers &&
+          blocks == other.blocks &&
+          userAgent == other.userAgent &&
+          uptimeSecs == other.uptimeSecs &&
+          peersCount == other.peersCount &&
+          peers == other.peers;
+}
+
+class PeerDetailedInfo {
+  final String address;
+  final String userAgent;
+  final int height;
+  final bool isInbound;
+
+  const PeerDetailedInfo({
+    required this.address,
+    required this.userAgent,
+    required this.height,
+    required this.isInbound,
+  });
+
+  @override
+  int get hashCode =>
+      address.hashCode ^
+      userAgent.hashCode ^
+      height.hashCode ^
+      isInbound.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PeerDetailedInfo &&
+          runtimeType == other.runtimeType &&
+          address == other.address &&
+          userAgent == other.userAgent &&
+          height == other.height &&
+          isInbound == other.isInbound;
+}
