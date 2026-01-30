@@ -138,3 +138,59 @@ pub async fn sync_wallet() -> Result<(), String> {
     // For now, it's a placeholder
     Ok(())
 }
+
+/// Check if a wallet already exists in the data directory
+pub fn check_wallet_exists(data_dir: String) -> bool {
+    let mnemonic_path = std::path::Path::new(&data_dir).join("mnemonic.txt");
+    mnemonic_path.exists()
+}
+
+/// Create a new wallet and return the mnemonic phrase
+pub fn create_wallet_mnemonic(data_dir: String) -> Result<String, String> {
+    let mnemonic_path = std::path::Path::new(&data_dir).join("mnemonic.txt");
+    
+    if mnemonic_path.exists() {
+        return Err("Wallet already exists".to_string());
+    }
+    
+    // Generate 16 bytes of entropy for 12-word mnemonic
+    let mut entropy = [0u8; 16];
+    rand::RngCore::fill_bytes(&mut rand::rng(), &mut entropy);
+    let mnemonic = bip39::Mnemonic::from_entropy(&entropy)
+        .map_err(|e| format!("Failed to create mnemonic: {}", e))?;
+    
+    // Create directory if it doesn't exist
+    std::fs::create_dir_all(&data_dir)
+        .map_err(|e| format!("Failed to create data dir: {}", e))?;
+    
+    // Save mnemonic to file
+    std::fs::write(&mnemonic_path, mnemonic.to_string())
+        .map_err(|e| format!("Failed to save mnemonic: {}", e))?;
+    
+    Ok(mnemonic.to_string())
+}
+
+/// Import an existing mnemonic phrase
+pub fn import_wallet_mnemonic(data_dir: String, mnemonic: String) -> Result<(), String> {
+    let mnemonic_path = std::path::Path::new(&data_dir).join("mnemonic.txt");
+    
+    // Validate the mnemonic
+    let _ = bip39::Mnemonic::parse(mnemonic.trim())
+        .map_err(|e| format!("Invalid mnemonic: {}", e))?;
+    
+    // Create directory if it doesn't exist
+    std::fs::create_dir_all(&data_dir)
+        .map_err(|e| format!("Failed to create data dir: {}", e))?;
+    
+    // Save mnemonic to file
+    std::fs::write(&mnemonic_path, mnemonic.trim())
+        .map_err(|e| format!("Failed to save mnemonic: {}", e))?;
+    
+    Ok(())
+}
+
+/// Get the stored mnemonic phrase (for backup display)
+pub fn get_wallet_mnemonic(data_dir: String) -> Option<String> {
+    let mnemonic_path = std::path::Path::new(&data_dir).join("mnemonic.txt");
+    std::fs::read_to_string(mnemonic_path).ok()
+}

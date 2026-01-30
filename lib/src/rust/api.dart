@@ -29,6 +29,27 @@ Future<WalletInfo?> getWalletInfo() =>
 
 Future<void> syncWallet() => RustLib.instance.api.crateApiSyncWallet();
 
+/// Check if a wallet already exists in the data directory
+Future<bool> checkWalletExists({required String dataDir}) =>
+    RustLib.instance.api.crateApiCheckWalletExists(dataDir: dataDir);
+
+/// Create a new wallet and return the mnemonic phrase
+Future<String> createWalletMnemonic({required String dataDir}) =>
+    RustLib.instance.api.crateApiCreateWalletMnemonic(dataDir: dataDir);
+
+/// Import an existing mnemonic phrase
+Future<void> importWalletMnemonic({
+  required String dataDir,
+  required String mnemonic,
+}) => RustLib.instance.api.crateApiImportWalletMnemonic(
+  dataDir: dataDir,
+  mnemonic: mnemonic,
+);
+
+/// Get the stored mnemonic phrase (for backup display)
+Future<String?> getWalletMnemonic({required String dataDir}) =>
+    RustLib.instance.api.crateApiGetWalletMnemonic(dataDir: dataDir);
+
 class NodeStats {
   final bool inIbd;
   final int headers;
