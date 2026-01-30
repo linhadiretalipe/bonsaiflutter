@@ -35,5 +35,9 @@ dirs = "6.0.0"
 serde = { version = "1.0.228", features = ["derive"] }
 toml = "0.9.10"
 futures = "0.3"
+bdk_file_store = "0.22.0"
+bip39 = "2.2.2"
+getrandom = "0.3.4"
+rand = "0.9.2"
 # open = "5.3.3" # Removed as it's likely desktop/UI specific
 

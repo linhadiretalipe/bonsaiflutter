@@ -7,6 +7,13 @@ use bdk_floresta::UtreexoNodeConfig;
 use crate::node::control::{start_node, stop_node};
 use crate::node::stats_fetcher::fetch_stats;
 use crate::node::message::NodeMessage;
+use crate::wallet::manager::{WALLET_MANAGER, WalletManager};
+
+#[derive(Debug, Clone)]
+pub struct WalletInfo {
+    pub balance_sats: u64,
+    pub address: String,
+}
 
 static NODE_HANDLE: Lazy<Arc<RwLock<Option<Arc<RwLock<bdk_floresta::Node>>>>>> = 
     Lazy::new(|| Arc::new(RwLock::new(None)));
@@ -32,14 +39,23 @@ pub async fn start_node_service(data_dir: String, network: String) -> Result<(),
 
     let config = UtreexoNodeConfig {
         network,
-        datadir: data_dir,
+        datadir: data_dir.clone(),
         ..Default::default()
     };
 
     match start_node(config).await {
         Ok(node) => {
             *handle = Some(node);
-            Ok(())
+            
+            // Initialize wallet
+            let mut wallet_handle = WALLET_MANAGER.write().await;
+            match WalletManager::init(&data_dir, network) {
+                Ok(manager) => {
+                    *wallet_handle = Some(manager);
+                    Ok(())
+                }
+                Err(e) => Err(format!("Wallet init error: {}", e)),
+            }
         }
         Err(e) => Err(e),
     }
@@ -105,4 +121,20 @@ pub async fn get_node_stats() -> Option<NodeStats> {
         }
     }
     None
+}
+pub async fn get_wallet_info() -> Option<WalletInfo> {
+    let mut handle: tokio::sync::RwLockWriteGuard<'_, Option<WalletManager>> = WALLET_MANAGER.write().await;
+    if let Some(manager) = handle.as_mut() {
+        return Some(WalletInfo {
+            balance_sats: manager.get_balance(),
+            address: manager.get_address(),
+        });
+    }
+    None
+}
+
+pub async fn sync_wallet() -> Result<(), String> {
+    // TODO: Implement actual sync with floresta node
+    // For now, it's a placeholder
+    Ok(())
 }

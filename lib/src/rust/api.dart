@@ -6,7 +6,7 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`
 
 Future<void> startNodeService({
   required String dataDir,
@@ -23,6 +23,11 @@ Future<bool> isNodeRunning() => RustLib.instance.api.crateApiIsNodeRunning();
 
 Future<NodeStats?> getNodeStats() =>
     RustLib.instance.api.crateApiGetNodeStats();
+
+Future<WalletInfo?> getWalletInfo() =>
+    RustLib.instance.api.crateApiGetWalletInfo();
+
+Future<void> syncWallet() => RustLib.instance.api.crateApiSyncWallet();
 
 class NodeStats {
   final bool inIbd;
@@ -96,4 +101,22 @@ class PeerDetailedInfo {
           userAgent == other.userAgent &&
           height == other.height &&
           isInbound == other.isInbound;
+}
+
+class WalletInfo {
+  final BigInt balanceSats;
+  final String address;
+
+  const WalletInfo({required this.balanceSats, required this.address});
+
+  @override
+  int get hashCode => balanceSats.hashCode ^ address.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WalletInfo &&
+          runtimeType == other.runtimeType &&
+          balanceSats == other.balanceSats &&
+          address == other.address;
 }

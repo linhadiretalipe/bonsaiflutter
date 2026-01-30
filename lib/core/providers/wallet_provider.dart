@@ -1,11 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/transaction_model.dart';
 import '../../domain/repositories/wallet_repository.dart';
-import '../../data/repositories/mock_wallet_repository.dart';
+import '../../data/repositories/real_wallet_repository.dart';
 
 // The repository provider (singleton)
 final walletRepositoryProvider = Provider<WalletRepository>((ref) {
-  return MockWalletRepository();
+  return RealWalletRepository();
 });
 
 // A provider that manages the list of transactions

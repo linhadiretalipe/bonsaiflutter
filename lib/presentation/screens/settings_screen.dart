@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/providers/node_provider.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final nodeAsync = ref.watch(nodeProvider);
+    final isRunning = nodeAsync.value?.isRunning ?? false;
+    final stats = nodeAsync.value?.stats;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
@@ -22,13 +28,14 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 16),
           _buildSettingsTile(
             title: 'Network',
-            subtitle: 'Signet',
+            subtitle: isRunning ? 'Signet' : 'Disconnected',
             icon: Icons.hub,
             onTap: () {},
           ),
           _buildSettingsTile(
             title: 'User Agent',
-            subtitle: '/Bonsai:0.1.0/',
+            subtitle:
+                stats?.userAgent ?? (isRunning ? 'Fetching...' : 'Not Running'),
             icon: Icons.person_outline,
             onTap: () {},
           ),
