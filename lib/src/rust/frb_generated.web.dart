@@ -30,6 +30,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NodeStats dco_decode_box_autoadd_node_stats(dynamic raw);
 
   @protected
+  int dco_decode_box_autoadd_u_32(dynamic raw);
+
+  @protected
+  BigInt dco_decode_box_autoadd_u_64(dynamic raw);
+
+  @protected
   WalletInfo dco_decode_box_autoadd_wallet_info(dynamic raw);
 
   @protected
@@ -39,6 +45,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  List<WalletTransactionInfo> dco_decode_list_wallet_transaction_info(
+    dynamic raw,
+  );
+
+  @protected
   NodeStats dco_decode_node_stats(dynamic raw);
 
   @protected
@@ -46,6 +57,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   NodeStats? dco_decode_opt_box_autoadd_node_stats(dynamic raw);
+
+  @protected
+  int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
+
+  @protected
+  BigInt? dco_decode_opt_box_autoadd_u_64(dynamic raw);
 
   @protected
   WalletInfo? dco_decode_opt_box_autoadd_wallet_info(dynamic raw);
@@ -72,6 +89,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   WalletInfo dco_decode_wallet_info(dynamic raw);
 
   @protected
+  WalletTransactionInfo dco_decode_wallet_transaction_info(dynamic raw);
+
+  @protected
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
@@ -79,6 +99,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   NodeStats sse_decode_box_autoadd_node_stats(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
+
+  @protected
+  BigInt sse_decode_box_autoadd_u_64(SseDeserializer deserializer);
 
   @protected
   WalletInfo sse_decode_box_autoadd_wallet_info(SseDeserializer deserializer);
@@ -92,6 +118,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  List<WalletTransactionInfo> sse_decode_list_wallet_transaction_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   NodeStats sse_decode_node_stats(SseDeserializer deserializer);
 
   @protected
@@ -101,6 +132,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NodeStats? sse_decode_opt_box_autoadd_node_stats(
     SseDeserializer deserializer,
   );
+
+  @protected
+  int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
+
+  @protected
+  BigInt? sse_decode_opt_box_autoadd_u_64(SseDeserializer deserializer);
 
   @protected
   WalletInfo? sse_decode_opt_box_autoadd_wallet_info(
@@ -129,6 +166,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   WalletInfo sse_decode_wallet_info(SseDeserializer deserializer);
 
   @protected
+  WalletTransactionInfo sse_decode_wallet_transaction_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
@@ -142,6 +184,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     NodeStats self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_u_64(BigInt self, SseSerializer serializer);
 
   @protected
   void sse_encode_box_autoadd_wallet_info(
@@ -162,6 +210,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_wallet_transaction_info(
+    List<WalletTransactionInfo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_node_stats(NodeStats self, SseSerializer serializer);
 
   @protected
@@ -172,6 +226,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     NodeStats? self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_64(BigInt? self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_box_autoadd_wallet_info(
@@ -202,6 +262,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_wallet_info(WalletInfo self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_wallet_transaction_info(
+    WalletTransactionInfo self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer);

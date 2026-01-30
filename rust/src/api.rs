@@ -133,11 +133,48 @@ pub async fn get_wallet_info() -> Option<WalletInfo> {
     None
 }
 
-pub async fn sync_wallet() -> Result<(), String> {
-    // TODO: Implement actual sync with floresta node
-    // For now, it's a placeholder
-    Ok(())
+/// Transaction info for Flutter
+#[derive(Debug, Clone)]
+pub struct WalletTransactionInfo {
+    pub txid: String,
+    pub sent: u64,
+    pub received: u64,
+    pub fee: Option<u64>,
+    pub is_confirmed: bool,
+    pub confirmation_height: Option<u32>,
+    pub timestamp: Option<u64>,
 }
+
+/// Get wallet transactions
+pub async fn get_wallet_transactions() -> Vec<WalletTransactionInfo> {
+    let handle = WALLET_MANAGER.read().await;
+    if let Some(manager) = handle.as_ref() {
+        return manager.get_transactions()
+            .into_iter()
+            .map(|tx| WalletTransactionInfo {
+                txid: tx.txid,
+                sent: tx.sent,
+                received: tx.received,
+                fee: tx.fee,
+                is_confirmed: tx.is_confirmed,
+                confirmation_height: tx.confirmation_height,
+                timestamp: tx.timestamp,
+            })
+            .collect();
+    }
+    Vec::new()
+}
+
+/// Sync wallet - process pending blocks from the node
+pub async fn sync_wallet() -> Result<u32, String> {
+    let mut handle = WALLET_MANAGER.write().await;
+    if let Some(manager) = handle.as_mut() {
+        let processed = manager.process_pending_blocks();
+        return Ok(processed as u32);
+    }
+    Err("Wallet not initialized".to_string())
+}
+
 
 /// Check if a wallet already exists in the data directory
 pub fn check_wallet_exists(data_dir: String) -> bool {

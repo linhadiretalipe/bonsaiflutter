@@ -6,7 +6,7 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`
 
 Future<void> startNodeService({
   required String dataDir,
@@ -27,7 +27,12 @@ Future<NodeStats?> getNodeStats() =>
 Future<WalletInfo?> getWalletInfo() =>
     RustLib.instance.api.crateApiGetWalletInfo();
 
-Future<void> syncWallet() => RustLib.instance.api.crateApiSyncWallet();
+/// Get wallet transactions
+Future<List<WalletTransactionInfo>> getWalletTransactions() =>
+    RustLib.instance.api.crateApiGetWalletTransactions();
+
+/// Sync wallet - process pending blocks from the node
+Future<int> syncWallet() => RustLib.instance.api.crateApiSyncWallet();
 
 /// Check if a wallet already exists in the data directory
 Future<bool> checkWalletExists({required String dataDir}) =>
@@ -140,4 +145,48 @@ class WalletInfo {
           runtimeType == other.runtimeType &&
           balanceSats == other.balanceSats &&
           address == other.address;
+}
+
+/// Transaction info for Flutter
+class WalletTransactionInfo {
+  final String txid;
+  final BigInt sent;
+  final BigInt received;
+  final BigInt? fee;
+  final bool isConfirmed;
+  final int? confirmationHeight;
+  final BigInt? timestamp;
+
+  const WalletTransactionInfo({
+    required this.txid,
+    required this.sent,
+    required this.received,
+    this.fee,
+    required this.isConfirmed,
+    this.confirmationHeight,
+    this.timestamp,
+  });
+
+  @override
+  int get hashCode =>
+      txid.hashCode ^
+      sent.hashCode ^
+      received.hashCode ^
+      fee.hashCode ^
+      isConfirmed.hashCode ^
+      confirmationHeight.hashCode ^
+      timestamp.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WalletTransactionInfo &&
+          runtimeType == other.runtimeType &&
+          txid == other.txid &&
+          sent == other.sent &&
+          received == other.received &&
+          fee == other.fee &&
+          isConfirmed == other.isConfirmed &&
+          confirmationHeight == other.confirmationHeight &&
+          timestamp == other.timestamp;
 }

@@ -43,17 +43,40 @@ class DashboardScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppTheme.darkSurface,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.notifications_outlined,
-                      color: Colors.white,
-                    ),
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () async {
+                          // Trigger wallet sync
+                          await ref
+                              .read(transactionsProvider.notifier)
+                              .refresh();
+                          ref.invalidate(balanceProvider);
+                        },
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.darkSurface,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.sync, color: Colors.white),
+                        ),
+                      ),
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppTheme.darkSurface,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.notifications_outlined,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
