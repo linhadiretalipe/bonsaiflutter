@@ -1,13 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/providers/wallet_provider.dart';
+import '../../core/providers/btc_price_provider.dart';
+import '../../domain/models/transaction_model.dart';
+import '../widgets/balance_history_chart.dart';
 import 'receive_screen.dart';
+import 'transaction_history_screen.dart';
+import 'send_screen.dart';
+
+import '../widgets/transaction_item.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final transactionsAsync = ref.watch(transactionsProvider);
+    final balanceAsync = ref.watch(balanceProvider);
+
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -37,17 +48,40 @@ class DashboardScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppTheme.darkSurface,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.notifications_outlined,
-                      color: Colors.white,
-                    ),
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () async {
+                          // Trigger wallet sync
+                          await ref
+                              .read(transactionsProvider.notifier)
+                              .refresh();
+                          ref.invalidate(balanceProvider);
+                        },
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.darkSurface,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.sync, color: Colors.white),
+                        ),
+                      ),
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppTheme.darkSurface,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.notifications_outlined,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -77,30 +111,70 @@ class DashboardScreen extends ConsumerWidget {
                       style: TextStyle(color: Colors.white54, fontSize: 14),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      '1.240567 BTC',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: -1.0,
+                    balanceAsync.when(
+                      data: (balance) => Text(
+                        '${balance.toStringAsFixed(6)} BTC',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: -1.0,
+                        ),
+                      ),
+                      loading: () => const CircularProgressIndicator(),
+                      error: (err, stack) => const Text(
+                        'Error',
+                        style: TextStyle(color: Colors.white),
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      '≈ \$54,320.00 USD',
-                      style: TextStyle(
-                        color: AppTheme.secondaryGreen,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    balanceAsync.when(
+                      data: (balance) {
+                        final fiatValue = ref.watch(fiatValueProvider(balance));
+                        return Text(
+                          '≈ $fiatValue USD',
+                          style: const TextStyle(
+                            color: AppTheme.secondaryGreen,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        );
+                      },
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
                     ),
+
                     const SizedBox(height: 24),
                     Row(
                       children: [
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: () {},
+                            onPressed: () async {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const SendScreen(),
+                                ),
+                              );
+
+                              // Check if a transaction was sent
+                              if (result != null &&
+                                  result is Map &&
+                                  result['success'] == true) {
+                                final amountSats =
+                                    int.tryParse(result['amountSats'] ?? '0') ??
+                                    0;
+                                final double amountBtc =
+                                    amountSats / 100000000.0;
+                                final address = result['address'] ?? '';
+
+                                // Call the provider to send transaction
+                                // The provider handles adding it to the repo and refreshing the list
+                                await ref
+                                    .read(transactionsProvider.notifier)
+                                    .sendTransaction(amountBtc, address);
+                              }
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
                               foregroundColor: Colors.black,
@@ -133,11 +207,28 @@ class DashboardScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: 24),
 
-              const SizedBox(height: 40),
+              // Balance History Chart
+              transactionsAsync.when(
+                data: (transactions) {
+                  // Generate balance history from transactions
+                  final history = _generateBalanceHistory(
+                    transactions,
+                    balanceAsync.value ?? 0,
+                  );
+                  if (history.length > 1) {
+                    return BalanceHistoryChart(balanceHistory: history);
+                  }
+                  return const SizedBox.shrink();
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
 
+              const SizedBox(height: 24),
               // Transactions Header
-              const Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
@@ -148,11 +239,23 @@ class DashboardScreen extends ConsumerWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Text(
-                    'View All',
-                    style: TextStyle(
-                      color: AppTheme.primaryGreen,
-                      fontSize: 14,
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const TransactionHistoryScreen(),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      'View All',
+                      style: TextStyle(
+                        color: AppTheme.primaryGreen,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -160,77 +263,29 @@ class DashboardScreen extends ConsumerWidget {
 
               const SizedBox(height: 16),
 
-              // Recent Transactions List (Placeholder)
+              // Recent Transactions List
               Expanded(
-                child: ListView.separated(
-                  itemCount: 5,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final isReceived = index % 2 == 0;
-                    return Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppTheme.darkSurface,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: isReceived
-                                  ? AppTheme.primaryGreen.withOpacity(0.1)
-                                  : Colors.red.withOpacity(0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              isReceived
-                                  ? Icons.arrow_downward
-                                  : Icons.arrow_upward,
-                              color: isReceived
-                                  ? AppTheme.primaryGreen
-                                  : Colors.red,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  isReceived
-                                      ? 'Received Bitcoin'
-                                      : 'Sent Bitcoin',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const Text(
-                                  'Today, 10:23 AM',
-                                  style: TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            isReceived ? '+0.005 BTC' : '-0.001 BTC',
-                            style: TextStyle(
-                              color: isReceived
-                                  ? AppTheme.primaryGreen
-                                  : Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                child: transactionsAsync.when(
+                  data: (transactions) => ListView.separated(
+                    itemCount: transactions.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final tx = transactions[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: TransactionItem(transaction: tx),
+                      );
+                    },
+                  ),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (err, stack) => Center(
+                    child: Text(
+                      'Error: $err',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -239,4 +294,43 @@ class DashboardScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Generate balance history from transactions (working backwards from current balance)
+List<double> _generateBalanceHistory(
+  List<UserTransaction> transactions,
+  double currentBalance,
+) {
+  if (transactions.isEmpty) return [currentBalance];
+
+  // Sort transactions by date (oldest first)
+  final sorted = List<UserTransaction>.from(transactions)
+    ..sort((a, b) => a.date.compareTo(b.date));
+
+  // Calculate historical balances
+  final history = <double>[];
+  double runningBalance = currentBalance;
+
+  // Work backwards from current balance
+  for (var i = sorted.length - 1; i >= 0; i--) {
+    final tx = sorted[i];
+    if (tx.type == TransactionType.received) {
+      runningBalance -= tx.amountBtc;
+    } else {
+      runningBalance += tx.amountBtc;
+    }
+  }
+
+  // Now build forward from the calculated starting balance
+  history.add(runningBalance);
+  for (final tx in sorted) {
+    if (tx.type == TransactionType.received) {
+      runningBalance += tx.amountBtc;
+    } else {
+      runningBalance -= tx.amountBtc;
+    }
+    history.add(runningBalance);
+  }
+
+  return history;
 }

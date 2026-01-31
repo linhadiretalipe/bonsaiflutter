@@ -6,5 +6,218 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-String greet({required String name}) =>
-    RustLib.instance.api.crateApiGreet(name: name);
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+
+Future<void> startNodeService({
+  required String dataDir,
+  required String network,
+}) => RustLib.instance.api.crateApiStartNodeService(
+  dataDir: dataDir,
+  network: network,
+);
+
+Future<void> stopNodeService() =>
+    RustLib.instance.api.crateApiStopNodeService();
+
+Future<bool> isNodeRunning() => RustLib.instance.api.crateApiIsNodeRunning();
+
+Future<NodeStats?> getNodeStats() =>
+    RustLib.instance.api.crateApiGetNodeStats();
+
+Future<WalletInfo?> getWalletInfo() =>
+    RustLib.instance.api.crateApiGetWalletInfo();
+
+/// Get wallet transactions
+Future<List<WalletTransactionInfo>> getWalletTransactions() =>
+    RustLib.instance.api.crateApiGetWalletTransactions();
+
+/// Sync wallet - process pending blocks from the node
+Future<int> syncWallet() => RustLib.instance.api.crateApiSyncWallet();
+
+/// Create and sign a Bitcoin transaction
+/// Returns the transaction ID and raw hex for broadcast
+Future<SendTransactionResult> sendTransaction({
+  required String address,
+  required BigInt amountSats,
+  required double feeRate,
+}) => RustLib.instance.api.crateApiSendTransaction(
+  address: address,
+  amountSats: amountSats,
+  feeRate: feeRate,
+);
+
+/// Check if a wallet already exists in the data directory
+Future<bool> checkWalletExists({required String dataDir}) =>
+    RustLib.instance.api.crateApiCheckWalletExists(dataDir: dataDir);
+
+/// Create a new wallet and return the mnemonic phrase
+Future<String> createWalletMnemonic({required String dataDir}) =>
+    RustLib.instance.api.crateApiCreateWalletMnemonic(dataDir: dataDir);
+
+/// Import an existing mnemonic phrase
+Future<void> importWalletMnemonic({
+  required String dataDir,
+  required String mnemonic,
+}) => RustLib.instance.api.crateApiImportWalletMnemonic(
+  dataDir: dataDir,
+  mnemonic: mnemonic,
+);
+
+/// Get the stored mnemonic phrase (for backup display)
+Future<String?> getWalletMnemonic({required String dataDir}) =>
+    RustLib.instance.api.crateApiGetWalletMnemonic(dataDir: dataDir);
+
+class NodeStats {
+  final bool inIbd;
+  final int headers;
+  final int blocks;
+  final String userAgent;
+  final BigInt uptimeSecs;
+  final BigInt peersCount;
+  final List<PeerDetailedInfo> peers;
+
+  const NodeStats({
+    required this.inIbd,
+    required this.headers,
+    required this.blocks,
+    required this.userAgent,
+    required this.uptimeSecs,
+    required this.peersCount,
+    required this.peers,
+  });
+
+  @override
+  int get hashCode =>
+      inIbd.hashCode ^
+      headers.hashCode ^
+      blocks.hashCode ^
+      userAgent.hashCode ^
+      uptimeSecs.hashCode ^
+      peersCount.hashCode ^
+      peers.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NodeStats &&
+          runtimeType == other.runtimeType &&
+          inIbd == other.inIbd &&
+          headers == other.headers &&
+          blocks == other.blocks &&
+          userAgent == other.userAgent &&
+          uptimeSecs == other.uptimeSecs &&
+          peersCount == other.peersCount &&
+          peers == other.peers;
+}
+
+class PeerDetailedInfo {
+  final String address;
+  final String userAgent;
+  final int height;
+  final bool isInbound;
+
+  const PeerDetailedInfo({
+    required this.address,
+    required this.userAgent,
+    required this.height,
+    required this.isInbound,
+  });
+
+  @override
+  int get hashCode =>
+      address.hashCode ^
+      userAgent.hashCode ^
+      height.hashCode ^
+      isInbound.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PeerDetailedInfo &&
+          runtimeType == other.runtimeType &&
+          address == other.address &&
+          userAgent == other.userAgent &&
+          height == other.height &&
+          isInbound == other.isInbound;
+}
+
+/// Send transaction result
+class SendTransactionResult {
+  final String txid;
+  final String rawTxHex;
+
+  const SendTransactionResult({required this.txid, required this.rawTxHex});
+
+  @override
+  int get hashCode => txid.hashCode ^ rawTxHex.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SendTransactionResult &&
+          runtimeType == other.runtimeType &&
+          txid == other.txid &&
+          rawTxHex == other.rawTxHex;
+}
+
+class WalletInfo {
+  final BigInt balanceSats;
+  final String address;
+
+  const WalletInfo({required this.balanceSats, required this.address});
+
+  @override
+  int get hashCode => balanceSats.hashCode ^ address.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WalletInfo &&
+          runtimeType == other.runtimeType &&
+          balanceSats == other.balanceSats &&
+          address == other.address;
+}
+
+/// Transaction info for Flutter
+class WalletTransactionInfo {
+  final String txid;
+  final BigInt sent;
+  final BigInt received;
+  final BigInt? fee;
+  final bool isConfirmed;
+  final int? confirmationHeight;
+  final BigInt? timestamp;
+
+  const WalletTransactionInfo({
+    required this.txid,
+    required this.sent,
+    required this.received,
+    this.fee,
+    required this.isConfirmed,
+    this.confirmationHeight,
+    this.timestamp,
+  });
+
+  @override
+  int get hashCode =>
+      txid.hashCode ^
+      sent.hashCode ^
+      received.hashCode ^
+      fee.hashCode ^
+      isConfirmed.hashCode ^
+      confirmationHeight.hashCode ^
+      timestamp.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WalletTransactionInfo &&
+          runtimeType == other.runtimeType &&
+          txid == other.txid &&
+          sent == other.sent &&
+          received == other.received &&
+          fee == other.fee &&
+          isConfirmed == other.isConfirmed &&
+          confirmationHeight == other.confirmationHeight &&
+          timestamp == other.timestamp;
+}

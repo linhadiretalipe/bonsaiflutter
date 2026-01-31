@@ -1,38 +1,98 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/providers/wallet_provider.dart';
+import '../widgets/copyable_address.dart';
 
-class ReceiveScreen extends StatefulWidget {
+class ReceiveScreen extends ConsumerStatefulWidget {
   const ReceiveScreen({super.key});
 
   @override
-  State<ReceiveScreen> createState() => _ReceiveScreenState();
+  ConsumerState<ReceiveScreen> createState() => _ReceiveScreenState();
 }
 
-class _ReceiveScreenState extends State<ReceiveScreen> {
-  // Placeholder address
-  String _address = "2Mx1KKNGZkRPuvX...mEDYuDyQSwwXrS4";
-  String _fullAddress = "2Mx1KKNGZkRPuvXmEDYuDyQSwwXrS4";
+class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
+  String _address = "";
+  bool _isLoading = true;
   bool _isAddressSelected = true;
 
-  void _generateNewAddress() {
-    setState(() {
-      // Mock logic to simulate generating a new address
-      // In a real app, this would call the Rust bridge
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      _fullAddress = "bc1q${timestamp}mockaddress...new";
-      _address =
-          "${_fullAddress.substring(0, 15)}...${_fullAddress.substring(_fullAddress.length - 10)}";
-    });
+  @override
+  void initState() {
+    super.initState();
+    _loadAddress();
+  }
 
+  Future<void> _loadAddress() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final repository = ref.read(walletRepositoryProvider);
+      final address = await repository.getAddress();
+
+      if (address != null && mounted) {
+        setState(() {
+          _address = address;
+          _isLoading = false;
+        });
+      } else if (mounted) {
+        setState(() => _isLoading = false);
+        _showError("Wallet not ready");
+      }
+    } catch (e) {
+      debugPrint("ReceiveScreen error: $e");
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showError("Failed to load address: $e");
+      }
+    }
+  }
+
+  // NOTE: getWalletInfo (FFI) is generally needed to generate a NEW address specifically.
+  // The repository currently exposes `getAddress` which gets the *current* unused address.
+  // If we want explicit "Generate New", the repository needs a method for it.
+  // For now, re-fetching getAddress is a reasonable proxy if the backend rotates it,
+  // but standardized behavior usually implies triggering a new derivation.
+  // Given RealWalletRepository implementation, `getWalletInfo` returns current address.
+  // We'll keep the reload behavior for now or assume repository handles rotation.
+  Future<void> _generateNewAddress() async {
+    if (!mounted) return;
+    await _loadAddress();
+    if (mounted && _address.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Address updated"),
+          duration: Duration(seconds: 1),
+          backgroundColor: AppTheme.primaryGreen,
+        ),
+      );
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("New address generated"),
-        duration: Duration(seconds: 1),
-        backgroundColor: AppTheme.darkSurface,
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.redAccent,
+        action: SnackBarAction(
+          label: "Retry",
+          textColor: Colors.white,
+          onPressed: _loadAddress,
+        ),
       ),
     );
+  }
+
+  String get _qrData {
+    if (_isAddressSelected) {
+      return _address;
+    } else {
+      // Bitcoin URI format
+      return "bitcoin:$_address";
+    }
   }
 
   @override
@@ -51,7 +111,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
         child: Column(
           children: [
-            // Toggle Button
+            // Toggle Button (Address / Link)
             Container(
               decoration: BoxDecoration(
                 color: AppTheme.darkSurface,
@@ -83,121 +143,96 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: QrImageView(
-                data: _fullAddress,
-                version: QrVersions.auto,
-                size: 260.0,
-                backgroundColor: Colors.white,
-                errorCorrectionLevel:
-                    QrErrorCorrectLevel.H, // High correction for logo embedding
-                embeddedImage: const AssetImage('assets/icon/bonsai-dark.png'),
-                embeddedImageStyle: const QrEmbeddedImageStyle(
-                  size: Size(60, 60),
-                ),
-              ),
+              child: _isLoading || _address.isEmpty
+                  ? const SizedBox(
+                      width: 260,
+                      height: 260,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppTheme.primaryGreen,
+                        ),
+                      ),
+                    )
+                  : QrImageView(
+                      data: _qrData,
+                      version: QrVersions.auto,
+                      size: 260.0,
+                      backgroundColor: Colors.white,
+                      errorCorrectionLevel: QrErrorCorrectLevel.H,
+                      embeddedImage: const AssetImage(
+                        'assets/icon/bonsai-dark.png',
+                      ),
+                      embeddedImageStyle: const QrEmbeddedImageStyle(
+                        size: Size(60, 60),
+                      ),
+                    ),
             ),
             const SizedBox(height: 32),
 
             // Address Section
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "ADDRESS",
-                style: TextStyle(
-                  color: Colors.white54,
-                  fontSize: 12,
-                  letterSpacing: 1.2,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: _copyAddress,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
+            CopyableAddress(label: "YOUR ADDRESS", address: _address),
+            const SizedBox(height: 16),
+
+            // Full address display (small text)
+            if (_address.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppTheme.darkSurface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white10),
+                  color: AppTheme.darkSurface.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _address,
-                        style: const TextStyle(
-                          fontFamily: 'Berkeley Mono',
-                          color: Colors.white,
-                          fontSize: 16,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(
-                      Icons.copy_outlined,
-                      color: Colors.white54,
-                      size: 20,
-                    ),
-                  ],
+                child: Text(
+                  _address,
+                  style: const TextStyle(
+                    fontFamily: 'Berkeley Mono',
+                    color: Colors.white54,
+                    fontSize: 11,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
-            ),
+
             const SizedBox(height: 24),
 
-            // Labels Section
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "LABELS",
-                style: TextStyle(
-                  color: Colors.white54,
-                  fontSize: 12,
-                  letterSpacing: 1.2,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: "Select or type label",
-                hintStyle: const TextStyle(color: Colors.white38),
-                filled: true,
-                fillColor: AppTheme.darkSurface,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.white10),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.white10),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppTheme.primaryGreen),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
+            // Generate New Address Button
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: _generateNewAddress,
-                icon: const Icon(Icons.refresh, color: AppTheme.primaryGreen),
-                label: const Text('Generate New Address'),
+                onPressed: _isLoading ? null : _generateNewAddress,
+                icon: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppTheme.primaryGreen,
+                        ),
+                      )
+                    : const Icon(Icons.refresh, color: AppTheme.primaryGreen),
+                label: const Text('Refresh Address'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.primaryGreen,
                   side: const BorderSide(color: AppTheme.primaryGreen),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Share Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _address.isEmpty ? null : _shareAddress,
+                icon: const Icon(Icons.share, color: Colors.black),
+                label: const Text('Share Address'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryGreen,
+                  foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -236,14 +271,17 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
     );
   }
 
-  void _copyAddress() {
-    Clipboard.setData(ClipboardData(text: _fullAddress));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Address copied to clipboard"),
-        duration: Duration(seconds: 2),
-        backgroundColor: AppTheme.primaryGreen,
-      ),
-    );
+  void _shareAddress() {
+    // For now, just copy to clipboard
+    if (_address.isNotEmpty) {
+      Clipboard.setData(ClipboardData(text: _address));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Address copied to clipboard for sharing"),
+          duration: Duration(seconds: 2),
+          backgroundColor: AppTheme.primaryGreen,
+        ),
+      );
+    }
   }
 }

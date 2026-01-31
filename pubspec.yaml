@@ -42,6 +42,13 @@ dependencies:
   flutter_svg: ^2.2.3
   flutter_rust_bridge: ^2.11.1
   qr_flutter: ^4.1.0
+  mobile_scanner: ^7.1.4
+  path_provider: ^2.1.2
+  local_auth: ^3.0.0
+  shared_preferences: ^2.5.4
+  fl_chart: ^1.1.1
+  http: ^1.6.0
+  screen_protector: ^1.5.1
 
 dev_dependencies:
   flutter_test:

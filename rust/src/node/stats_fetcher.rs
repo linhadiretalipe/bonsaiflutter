@@ -42,27 +42,27 @@ impl Display for NodeImpl {
 
 #[allow(unused)]
 #[derive(Clone)]
-pub(crate) struct PeerInformation {
-    pub(crate) socket: SocketAddr,
-    pub(crate) services: ServiceFlags,
-    pub(crate) user_agent: String,
-    pub(crate) node_impl: NodeImpl,
-    pub(crate) initial_height: u32,
-    pub(crate) peer_status: PeerStatus,
-    pub(crate) connection_kind: ConnectionKind,
-    pub(crate) transport_protocol: TransportProtocol,
+pub struct PeerInformation {
+    pub socket: SocketAddr,
+    pub services: ServiceFlags,
+    pub user_agent: String,
+    pub node_impl: NodeImpl,
+    pub initial_height: u32,
+    pub peer_status: PeerStatus,
+    pub connection_kind: ConnectionKind,
+    pub transport_protocol: TransportProtocol,
 }
 
 #[derive(Clone)]
-pub(crate) struct NodeStatistics {
-    pub(crate) in_ibd: bool,
-    pub(crate) headers: u32,
-    pub(crate) blocks: u32,
-    pub(crate) accumulator: Stump,
-    pub(crate) accumulator_qr_data: Option<String>,
-    pub(crate) user_agent: String,
-    pub(crate) peer_informations: Vec<PeerInformation>,
-    pub(crate) uptime: Duration,
+pub struct NodeStatistics {
+    pub in_ibd: bool,
+    pub headers: u32,
+    pub blocks: u32,
+    pub accumulator: Stump,
+    pub accumulator_qr_data: Option<String>,
+    pub user_agent: String,
+    pub peer_informations: Vec<PeerInformation>,
+    pub uptime: Duration,
 }
 
 fn encode_stump(stump: &Stump) -> String {
