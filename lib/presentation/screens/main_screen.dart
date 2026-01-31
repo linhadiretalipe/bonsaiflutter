@@ -19,7 +19,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const DashboardScreen(),
     const NetworkScreen(),
-    const HelpScreen(),
+    // const HelpScreen(),
     const SettingsScreen(),
   ];
 
@@ -53,11 +53,11 @@ class _MainScreenState extends State<MainScreen> {
               selectedIcon: Icon(Icons.hub, color: AppTheme.primaryGreen),
               label: 'Network',
             ),
-            NavigationDestination(
-              icon: Icon(Icons.help_outline, color: Colors.white54),
-              selectedIcon: Icon(Icons.help, color: AppTheme.primaryGreen),
-              label: 'Help',
-            ),
+            // NavigationDestination(
+            //   icon: Icon(Icons.help_outline, color: Colors.white54),
+            //   selectedIcon: Icon(Icons.help, color: AppTheme.primaryGreen),
+            //   label: 'Help',
+            // ),
             NavigationDestination(
               icon: Icon(Icons.settings_outlined, color: Colors.white54),
               selectedIcon: Icon(Icons.settings, color: AppTheme.primaryGreen),

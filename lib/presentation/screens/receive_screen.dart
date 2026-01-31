@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../src/rust/api.dart';
+import '../widgets/copyable_address.dart';
 
 class ReceiveScreen extends StatefulWidget {
   const ReceiveScreen({super.key});
@@ -109,14 +110,6 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
     );
   }
 
-  String get _displayAddress {
-    if (_address.isEmpty) return "Loading...";
-    if (_address.length > 20) {
-      return "${_address.substring(0, 12)}...${_address.substring(_address.length - 8)}";
-    }
-    return _address;
-  }
-
   String get _qrData {
     if (_isAddressSelected) {
       return _address;
@@ -201,61 +194,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
             const SizedBox(height: 32),
 
             // Address Section
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "YOUR ADDRESS",
-                style: TextStyle(
-                  color: Colors.white54,
-                  fontSize: 12,
-                  letterSpacing: 1.2,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: _copyAddress,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
-                decoration: BoxDecoration(
-                  color: AppTheme.darkSurface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white10),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _displayAddress,
-                        style: const TextStyle(
-                          fontFamily: 'Berkeley Mono',
-                          color: Colors.white,
-                          fontSize: 16,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryGreen.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.copy_outlined,
-                        color: AppTheme.primaryGreen,
-                        size: 20,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            CopyableAddress(label: "YOUR ADDRESS", address: _address),
             const SizedBox(height: 16),
 
             // Full address display (small text)
@@ -263,7 +202,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppTheme.darkSurface.withOpacity(0.5),
+                  color: AppTheme.darkSurface.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -356,21 +295,17 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
     );
   }
 
-  void _copyAddress() {
-    if (_address.isEmpty) return;
-    Clipboard.setData(ClipboardData(text: _address));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Address copied to clipboard"),
-        duration: Duration(seconds: 2),
-        backgroundColor: AppTheme.primaryGreen,
-      ),
-    );
-  }
-
   void _shareAddress() {
     // For now, just copy to clipboard
-    // Could integrate with share_plus package for native sharing
-    _copyAddress();
+    if (_address.isNotEmpty) {
+      Clipboard.setData(ClipboardData(text: _address));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Address copied to clipboard for sharing"),
+          duration: Duration(seconds: 2),
+          backgroundColor: AppTheme.primaryGreen,
+        ),
+      );
+    }
   }
 }

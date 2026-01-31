@@ -6,7 +6,7 @@ import 'dart:io';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/node_provider.dart';
 import '../../core/providers/security_provider.dart';
-import 'recovery_phrase_view_screen.dart';
+
 import 'wallet_setup_screen.dart';
 import 'help_screen.dart';
 

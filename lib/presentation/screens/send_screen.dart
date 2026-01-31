@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/btc_price_provider.dart';
 import '../../src/rust/api.dart';
+import '../widgets/fee_selector.dart';
+import '../widgets/info_row.dart';
+import '../widgets/qr_scanner_modal.dart';
 
 class SendScreen extends ConsumerStatefulWidget {
   const SendScreen({super.key});
@@ -98,19 +100,20 @@ class _SendScreenState extends ConsumerState<SendScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            _buildInfoRow("Recipient", _addressController.text),
-            _buildInfoRow(
-              "Amount",
-              "$amountSats sats\n(~\$${amountUsd.toStringAsFixed(2)})",
+            InfoRow(label: "Recipient", value: _addressController.text),
+            InfoRow(
+              label: "Amount",
+              value: "$amountSats sats\n(~\$${amountUsd.toStringAsFixed(2)})",
             ),
-            _buildInfoRow(
-              "Est. Fee",
-              "$estimatedFee sats (${_feeRate.toStringAsFixed(1)} s/vB)\n(~\$${feeUsd.toStringAsFixed(2)})",
+            InfoRow(
+              label: "Est. Fee",
+              value:
+                  "$estimatedFee sats (${_feeRate.toStringAsFixed(1)} s/vB)\n(~\$${feeUsd.toStringAsFixed(2)})",
             ),
             const Divider(color: Colors.white10, height: 32),
-            _buildInfoRow(
-              "Total",
-              "$totalSats sats\n(~\$${totalUsd.toStringAsFixed(2)})",
+            InfoRow(
+              label: "Total",
+              value: "$totalSats sats\n(~\$${totalUsd.toStringAsFixed(2)})",
               isTotal: true,
             ),
             const SizedBox(height: 32),
@@ -152,38 +155,6 @@ class _SendScreenState extends ConsumerState<SendScreen> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value, {bool isTotal = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: isTotal ? Colors.white : Colors.white54,
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: TextStyle(
-                color: isTotal ? AppTheme.primaryGreen : Colors.white,
-                fontFamily: 'Berkeley Mono',
-                fontWeight: FontWeight.bold,
-                fontSize: isTotal ? 18 : 14,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _sendTransaction(int amountSats) async {
     setState(() => _isLoading = true);
 
@@ -219,25 +190,6 @@ class _SendScreenState extends ConsumerState<SendScreen> {
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  Widget _buildFeeChip(String label, double rate) {
-    final isSelected = _feeRate == rate;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) {
-        if (selected) {
-          setState(() => _feeRate = rate);
-        }
-      },
-      selectedColor: AppTheme.primaryGreen,
-      backgroundColor: AppTheme.darkSurface,
-      labelStyle: TextStyle(
-        color: isSelected ? Colors.black : Colors.white70,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-      ),
-    );
   }
 
   @override
@@ -325,107 +277,10 @@ class _SendScreenState extends ConsumerState<SendScreen> {
                     color: AppTheme.primaryGreen,
                   ),
                   onPressed: () async {
-                    // Open scanner in a modal or new route
-                    bool isScanned = false;
                     final result = await Navigator.push<String>(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => Scaffold(
-                          backgroundColor: Colors.black,
-                          body: Stack(
-                            children: [
-                              MobileScanner(
-                                onDetect: (capture) {
-                                  if (isScanned) return;
-                                  final List<Barcode> barcodes =
-                                      capture.barcodes;
-                                  for (final barcode in barcodes) {
-                                    if (barcode.rawValue != null) {
-                                      isScanned = true;
-                                      if (context.mounted) {
-                                        Navigator.of(
-                                          context,
-                                        ).pop(barcode.rawValue);
-                                      }
-                                      break;
-                                    }
-                                  }
-                                },
-                              ),
-
-                              // Semi-transparent overlay with cut-out using ColorFiltered
-                              ColorFiltered(
-                                colorFilter: ColorFilter.mode(
-                                  Colors.black.withOpacity(0.5),
-                                  BlendMode.srcOut,
-                                ),
-                                child: Stack(
-                                  children: [
-                                    Container(
-                                      decoration: const BoxDecoration(
-                                        color: Colors.black,
-                                        backgroundBlendMode: BlendMode.dstOut,
-                                      ),
-                                    ),
-                                    Center(
-                                      child: Container(
-                                        width: 250,
-                                        height: 250,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(
-                                            20,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // Green Border
-                              Center(
-                                child: Container(
-                                  width: 250,
-                                  height: 250,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: AppTheme.primaryGreen,
-                                      width: 2,
-                                    ),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                ),
-                              ),
-                              // Title and Back Button
-                              Positioned(
-                                top: 50,
-                                left: 20,
-                                child: IconButton(
-                                  icon: const Icon(
-                                    Icons.arrow_back,
-                                    color: Colors.white,
-                                  ),
-                                  onPressed: () => Navigator.pop(context),
-                                ),
-                              ),
-                              const Positioned(
-                                top: 65,
-                                left: 0,
-                                right: 0,
-                                child: Center(
-                                  child: Text(
-                                    'Scan QR Code',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        builder: (context) => const QrScannerModal(),
                       ),
                     );
 
@@ -492,34 +347,12 @@ class _SendScreenState extends ConsumerState<SendScreen> {
             const SizedBox(height: 24),
 
             // Fee Selection
-            const Text(
-              "NETWORK FEE",
-              style: TextStyle(
-                color: Colors.white54,
-                fontSize: 12,
-                letterSpacing: 1.2,
-                fontWeight: FontWeight.w600,
-              ),
+            FeeSelector(
+              currentFeeRate: _feeRate,
+              onFeeSelected: (rate) {
+                setState(() => _feeRate = rate);
+              },
             ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildFeeChip("Slow", 1.0),
-                _buildFeeChip("Medium", 10.0),
-                _buildFeeChip("Fast", 50.0),
-              ],
-            ),
-            if (_feeRate > 50) ...[
-              const SizedBox(height: 16),
-              Text(
-                "Custom Fee: ${_feeRate.toStringAsFixed(1)} sats/vB",
-                style: const TextStyle(
-                  color: AppTheme.primaryGreen,
-                  fontSize: 13,
-                ),
-              ),
-            ],
 
             const SizedBox(height: 48),
 
