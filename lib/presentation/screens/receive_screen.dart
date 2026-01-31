@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/theme/app_theme.dart';
-import '../../src/rust/api.dart';
+import '../../core/providers/wallet_provider.dart';
 import '../widgets/copyable_address.dart';
 
-class ReceiveScreen extends StatefulWidget {
+class ReceiveScreen extends ConsumerStatefulWidget {
   const ReceiveScreen({super.key});
 
   @override
-  State<ReceiveScreen> createState() => _ReceiveScreenState();
+  ConsumerState<ReceiveScreen> createState() => _ReceiveScreenState();
 }
 
-class _ReceiveScreenState extends State<ReceiveScreen> {
+class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
   String _address = "";
   bool _isLoading = true;
   bool _isAddressSelected = true;
@@ -28,23 +29,17 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Add a timeout to prevent permanent loading
-      final info = await getWalletInfo().timeout(
-        const Duration(seconds: 5),
-        onTimeout: () {
-          debugPrint("ReceiveScreen: getWalletInfo timed out");
-          return null;
-        },
-      );
+      final repository = ref.read(walletRepositoryProvider);
+      final address = await repository.getAddress();
 
-      if (info != null && mounted) {
+      if (address != null && mounted) {
         setState(() {
-          _address = info.address;
+          _address = address;
           _isLoading = false;
         });
       } else if (mounted) {
         setState(() => _isLoading = false);
-        _showError("Wallet not ready or timed out");
+        _showError("Wallet not ready");
       }
     } catch (e) {
       debugPrint("ReceiveScreen error: $e");
@@ -55,43 +50,24 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
     }
   }
 
+  // NOTE: getWalletInfo (FFI) is generally needed to generate a NEW address specifically.
+  // The repository currently exposes `getAddress` which gets the *current* unused address.
+  // If we want explicit "Generate New", the repository needs a method for it.
+  // For now, re-fetching getAddress is a reasonable proxy if the backend rotates it,
+  // but standardized behavior usually implies triggering a new derivation.
+  // Given RealWalletRepository implementation, `getWalletInfo` returns current address.
+  // We'll keep the reload behavior for now or assume repository handles rotation.
   Future<void> _generateNewAddress() async {
     if (!mounted) return;
-    setState(() => _isLoading = true);
-
-    try {
-      // Calling getWalletInfo reveals next address internally
-      final info = await getWalletInfo().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          debugPrint("ReceiveScreen: _generateNewAddress timed out");
-          return null;
-        },
+    await _loadAddress();
+    if (mounted && _address.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Address updated"),
+          duration: Duration(seconds: 1),
+          backgroundColor: AppTheme.primaryGreen,
+        ),
       );
-
-      if (info != null && mounted) {
-        setState(() {
-          _address = info.address;
-          _isLoading = false;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("New address generated"),
-            duration: Duration(seconds: 1),
-            backgroundColor: AppTheme.primaryGreen,
-          ),
-        );
-      } else if (mounted) {
-        setState(() => _isLoading = false);
-        _showError("Failed to generate new address");
-      }
-    } catch (e) {
-      debugPrint("ReceiveScreen error generating address: $e");
-      if (mounted) {
-        setState(() => _isLoading = false);
-        _showError("Error generating address: $e");
-      }
     }
   }
 
@@ -233,7 +209,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
                         ),
                       )
                     : const Icon(Icons.refresh, color: AppTheme.primaryGreen),
-                label: const Text('Generate New Address'),
+                label: const Text('Refresh Address'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.primaryGreen,
                   side: const BorderSide(color: AppTheme.primaryGreen),

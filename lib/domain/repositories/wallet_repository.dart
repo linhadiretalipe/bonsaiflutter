@@ -5,4 +5,5 @@ abstract class WalletRepository {
   Future<void> sendTransaction(double amountBtc, String address);
   Future<void> receiveTransaction(double amountBtc);
   Future<double> getBalance();
+  Future<String?> getAddress();
 }
