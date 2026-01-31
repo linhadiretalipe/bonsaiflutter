@@ -8,6 +8,7 @@ import '../../core/providers/node_provider.dart';
 import '../../core/providers/security_provider.dart';
 import 'recovery_phrase_view_screen.dart';
 import 'wallet_setup_screen.dart';
+import 'help_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -125,6 +126,17 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: 'USD',
             icon: Icons.attach_money,
             onTap: () {},
+          ),
+          _buildSettingsTile(
+            title: 'Help & Support',
+            subtitle: 'FAQ and Guides',
+            icon: Icons.help_outline,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HelpScreen()),
+              );
+            },
           ),
           _buildSettingsTile(
             title: 'About Bonsai',

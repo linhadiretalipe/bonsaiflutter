@@ -227,9 +227,8 @@ class DashboardScreen extends ConsumerWidget {
               ),
 
               const SizedBox(height: 24),
-
               // Transactions Header
-              const Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
