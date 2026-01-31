@@ -21,6 +21,8 @@ class SettingsScreen extends ConsumerWidget {
 
     final securityAsync = ref.watch(securityProvider);
     final biometricEnabled = securityAsync.value?.biometricEnabled ?? false;
+    final screenProtectionEnabled =
+        securityAsync.value?.screenProtectionEnabled ?? true;
     final deviceSupported = securityAsync.value?.deviceSupported ?? false;
 
     return Scaffold(
@@ -42,21 +44,27 @@ class SettingsScreen extends ConsumerWidget {
             context: context,
             ref: ref,
             enabled: biometricEnabled,
+
             deviceSupported: deviceSupported,
           ),
-          _buildSettingsTile(
-            title: 'View Recovery Phrase',
-            subtitle: 'Backup your wallet',
-            icon: Icons.vpn_key,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const RecoveryPhraseViewScreen(),
-                ),
-              );
-            },
+          _buildScreenProtectionTile(
+            context: context,
+            ref: ref,
+            enabled: screenProtectionEnabled,
           ),
+          // _buildSettingsTile(
+          //   title: 'View Recovery Phrase',
+          //   subtitle: 'Backup your wallet',
+          //   icon: Icons.vpn_key,
+          //   onTap: () {
+          //     Navigator.push(
+          //       context,
+          //       MaterialPageRoute(
+          //         builder: (context) => const RecoveryPhraseViewScreen(),
+          //       ),
+          //     );
+          //   },
+          // ),
           const Divider(color: Colors.white10, height: 40),
 
           // Danger Zone
@@ -215,6 +223,52 @@ class SettingsScreen extends ConsumerWidget {
                 }
               }
             : null,
+      ),
+    );
+  }
+
+  Widget _buildScreenProtectionTile({
+    required BuildContext context,
+    required WidgetRef ref,
+    required bool enabled,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.darkSurface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: SwitchListTile(
+        secondary: const Icon(Icons.screenshot_monitor, color: Colors.white70),
+        title: const Text(
+          'Prevent Screen Capture',
+          style: TextStyle(color: Colors.white),
+        ),
+        subtitle: Text(
+          enabled ? 'Content hidden' : 'Screenshots allowed',
+          style: const TextStyle(color: Colors.white38),
+        ),
+        value: enabled,
+        activeColor: AppTheme.primaryGreen,
+        onChanged: (value) async {
+          await ref
+              .read(securityProvider.notifier)
+              .toggleScreenProtection(value);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  value
+                      ? 'Screen protection enabled'
+                      : 'Screen protection disabled',
+                ),
+                backgroundColor: value
+                    ? AppTheme.primaryGreen
+                    : AppTheme.darkSurface,
+              ),
+            );
+          }
+        },
       ),
     );
   }
