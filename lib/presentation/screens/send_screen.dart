@@ -39,7 +39,7 @@ class _SendScreenState extends State<SendScreen> {
     super.dispose();
   }
 
-  void _sendTransaction() async {
+  void _onSendPressed() {
     if (_addressController.text.isEmpty || _amountController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -61,6 +61,115 @@ class _SendScreenState extends State<SendScreen> {
       return;
     }
 
+    _showConfirmationDialog(amountSats);
+  }
+
+  void _showConfirmationDialog(int amountSats) {
+    // Basic estimation: 140 vB for a standard P2WPKH transaction
+    final estimatedFee = (140 * _feeRate).ceil();
+    final totalSats = amountSats + estimatedFee;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.darkSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Confirm Transaction",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            _buildInfoRow("Recipient", _addressController.text),
+            _buildInfoRow("Amount", "$amountSats sats"),
+            _buildInfoRow(
+              "Est. Fee",
+              "$estimatedFee sats (${_feeRate.toStringAsFixed(1)} s/vB)",
+            ),
+            const Divider(color: Colors.white10, height: 32),
+            _buildInfoRow("Total", "$totalSats sats", isTotal: true),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _sendTransaction(amountSats);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryGreen,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  "Confirm & Send",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  "Cancel",
+                  style: TextStyle(color: Colors.white54),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value, {bool isTotal = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: isTotal ? Colors.white : Colors.white54,
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                color: isTotal ? AppTheme.primaryGreen : Colors.white,
+                fontFamily: 'Berkeley Mono',
+                fontWeight: FontWeight.bold,
+                fontSize: isTotal ? 18 : 14,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _sendTransaction(int amountSats) async {
     setState(() => _isLoading = true);
 
     try {
@@ -95,6 +204,25 @@ class _SendScreenState extends State<SendScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Widget _buildFeeChip(String label, double rate) {
+    final isSelected = _feeRate == rate;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        if (selected) {
+          setState(() => _feeRate = rate);
+        }
+      },
+      selectedColor: AppTheme.primaryGreen,
+      backgroundColor: AppTheme.darkSurface,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.black : Colors.white70,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+    );
   }
 
   @override
@@ -346,6 +474,37 @@ class _SendScreenState extends State<SendScreen> {
                 suffixStyle: const TextStyle(color: Colors.white54),
               ),
             ),
+            const SizedBox(height: 24),
+
+            // Fee Selection
+            const Text(
+              "NETWORK FEE",
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: 12,
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildFeeChip("Slow", 1.0),
+                _buildFeeChip("Medium", 10.0),
+                _buildFeeChip("Fast", 50.0),
+              ],
+            ),
+            if (_feeRate > 50) ...[
+              const SizedBox(height: 16),
+              Text(
+                "Custom Fee: ${_feeRate.toStringAsFixed(1)} sats/vB",
+                style: const TextStyle(
+                  color: AppTheme.primaryGreen,
+                  fontSize: 13,
+                ),
+              ),
+            ],
 
             const SizedBox(height: 48),
 
@@ -353,7 +512,7 @@ class _SendScreenState extends State<SendScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isLoading ? null : _sendTransaction,
+                onPressed: _isLoading ? null : _onSendPressed,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryGreen,
                   foregroundColor: Colors.black,
@@ -373,7 +532,7 @@ class _SendScreenState extends State<SendScreen> {
                         ),
                       )
                     : const Text(
-                        "Send Transaction",
+                        "Review Transaction",
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

@@ -23,39 +23,90 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
   }
 
   Future<void> _loadAddress() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
-    final info = await getWalletInfo();
-    if (info != null && mounted) {
-      setState(() {
-        _address = info.address;
-        _isLoading = false;
-      });
-    } else if (mounted) {
-      setState(() => _isLoading = false);
+
+    try {
+      // Add a timeout to prevent permanent loading
+      final info = await getWalletInfo().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          debugPrint("ReceiveScreen: getWalletInfo timed out");
+          return null;
+        },
+      );
+
+      if (info != null && mounted) {
+        setState(() {
+          _address = info.address;
+          _isLoading = false;
+        });
+      } else if (mounted) {
+        setState(() => _isLoading = false);
+        _showError("Wallet not ready or timed out");
+      }
+    } catch (e) {
+      debugPrint("ReceiveScreen error: $e");
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showError("Failed to load address: $e");
+      }
     }
   }
 
   Future<void> _generateNewAddress() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
 
-    // Calling getWalletInfo reveals next address internally
-    final info = await getWalletInfo();
-    if (info != null && mounted) {
-      setState(() {
-        _address = info.address;
-        _isLoading = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("New address generated"),
-          duration: Duration(seconds: 1),
-          backgroundColor: AppTheme.primaryGreen,
-        ),
+    try {
+      // Calling getWalletInfo reveals next address internally
+      final info = await getWalletInfo().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint("ReceiveScreen: _generateNewAddress timed out");
+          return null;
+        },
       );
-    } else if (mounted) {
-      setState(() => _isLoading = false);
+
+      if (info != null && mounted) {
+        setState(() {
+          _address = info.address;
+          _isLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("New address generated"),
+            duration: Duration(seconds: 1),
+            backgroundColor: AppTheme.primaryGreen,
+          ),
+        );
+      } else if (mounted) {
+        setState(() => _isLoading = false);
+        _showError("Failed to generate new address");
+      }
+    } catch (e) {
+      debugPrint("ReceiveScreen error generating address: $e");
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showError("Error generating address: $e");
+      }
     }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.redAccent,
+        action: SnackBarAction(
+          label: "Retry",
+          textColor: Colors.white,
+          onPressed: _loadAddress,
+        ),
+      ),
+    );
   }
 
   String get _displayAddress {

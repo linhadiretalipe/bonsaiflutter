@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/screens/main_screen.dart';
 import 'presentation/screens/wallet_setup_screen.dart';
+import 'presentation/screens/lock_screen.dart';
 import 'src/rust/api.dart';
 import 'src/rust/frb_generated.dart';
 
@@ -50,10 +51,14 @@ class _WalletCheckScreenState extends State<WalletCheckScreen> {
     if (!mounted) return;
 
     if (walletExists) {
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const MainScreen()));
+      // Wallet exists - show MainScreen wrapped in LockScreen
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => const LockScreen(child: MainScreen()),
+        ),
+      );
     } else {
+      // No wallet - show setup (no lock needed)
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const WalletSetupScreen()),
       );

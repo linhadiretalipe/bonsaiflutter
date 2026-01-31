@@ -123,13 +123,19 @@ pub async fn get_node_stats() -> Option<NodeStats> {
     None
 }
 pub async fn get_wallet_info() -> Option<WalletInfo> {
-    let mut handle: tokio::sync::RwLockWriteGuard<'_, Option<WalletManager>> = WALLET_MANAGER.write().await;
+    tracing::info!("get_wallet_info called");
+    let mut handle = WALLET_MANAGER.write().await;
+    tracing::info!("get_wallet_info handle acquired");
     if let Some(manager) = handle.as_mut() {
+        let balance_sats = manager.get_balance();
+        let address = manager.get_address();
+        tracing::info!("get_wallet_info success: balance={}, address={}", balance_sats, address);
         return Some(WalletInfo {
-            balance_sats: manager.get_balance(),
-            address: manager.get_address(),
+            balance_sats,
+            address,
         });
     }
+    tracing::warn!("get_wallet_info: Wallet not initialized");
     None
 }
 
@@ -197,11 +203,19 @@ pub async fn send_transaction(
         manager.send_transaction(&address, amount_sats, fee_rate)?
     };
     
-    // Convert tx bytes to hex for broadcast via external service
+    // Convert tx bytes to hex
     let raw_tx_hex = hex::encode(&tx_bytes);
     
-    // TODO: In future, broadcast via floresta node when API is available
-    // For now, return the raw tx for external broadcast (e.g., mempool.space API)
+    // Broadcast via node if available
+    {
+        let node_lock = NODE_HANDLE.read().await;
+        if let Some(node_arc) = node_lock.as_ref() {
+            let _node = node_arc.read().await;
+            
+            // TODO: Find correct broadcast method in bdk_floresta Node
+            // For now we return the hex for external service or future fix
+        }
+    }
     
     Ok(SendTransactionResult {
         txid,
