@@ -195,7 +195,7 @@ class _NetworkScreenState extends ConsumerState<NetworkScreen> {
     final inIbd = state.stats?.inIbd ?? false;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: AppTheme.darkSurface,
         borderRadius: BorderRadius.circular(16),

@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/wallet_provider.dart';
+import '../../core/providers/btc_price_provider.dart';
 import '../../domain/models/transaction_model.dart';
+import '../widgets/balance_history_chart.dart';
 import 'receive_screen.dart';
+import 'transaction_history_screen.dart';
 import 'send_screen.dart';
-import 'transaction_detail_screen.dart';
+
+import '../widgets/transaction_item.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -125,14 +129,17 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     balanceAsync.when(
-                      data: (balance) => Text(
-                        '≈ \$${(balance * 43000).toStringAsFixed(2)} USD', // Mock conversion
-                        style: const TextStyle(
-                          color: AppTheme.secondaryGreen,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      data: (balance) {
+                        final fiatValue = ref.watch(fiatValueProvider(balance));
+                        return Text(
+                          '≈ $fiatValue USD',
+                          style: const TextStyle(
+                            color: AppTheme.secondaryGreen,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        );
+                      },
                       loading: () => const SizedBox.shrink(),
                       error: (_, __) => const SizedBox.shrink(),
                     ),
@@ -200,8 +207,26 @@ class DashboardScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: 24),
 
-              const SizedBox(height: 40),
+              // Balance History Chart
+              transactionsAsync.when(
+                data: (transactions) {
+                  // Generate balance history from transactions
+                  final history = _generateBalanceHistory(
+                    transactions,
+                    balanceAsync.value ?? 0,
+                  );
+                  if (history.length > 1) {
+                    return BalanceHistoryChart(balanceHistory: history);
+                  }
+                  return const SizedBox.shrink();
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+
+              const SizedBox(height: 24),
 
               // Transactions Header
               const Row(
@@ -215,11 +240,23 @@ class DashboardScreen extends ConsumerWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Text(
-                    'View All',
-                    style: TextStyle(
-                      color: AppTheme.primaryGreen,
-                      fontSize: 14,
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const TransactionHistoryScreen(),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      'View All',
+                      style: TextStyle(
+                        color: AppTheme.primaryGreen,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -236,38 +273,9 @@ class DashboardScreen extends ConsumerWidget {
                         const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       final tx = transactions[index];
-                      // Calculate string amount
-                      final sign = tx.type == TransactionType.received
-                          ? '+'
-                          : '-';
-                      final amountStr =
-                          '$sign${tx.amountBtc.toStringAsFixed(8)} BTC';
-
-                      // Format Date simply for now
-                      final dateStr =
-                          "${tx.date.day}/${tx.date.month} ${tx.date.hour}:${tx.date.minute}";
-
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  TransactionDetailScreen(transaction: tx),
-                            ),
-                          );
-                        },
-                        child: TransactionItem(
-                          key: ValueKey(tx.id),
-                          data: {
-                            'type': tx.type == TransactionType.received
-                                ? 'received'
-                                : 'sent',
-                            'amount': amountStr,
-                            'date': dateStr,
-                          },
-                          isNew: tx.isNew,
-                        ),
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: TransactionItem(transaction: tx),
                       );
                     },
                   ),
@@ -289,117 +297,41 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-class TransactionItem extends StatefulWidget {
-  final Map<String, dynamic> data;
-  final bool isNew;
+/// Generate balance history from transactions (working backwards from current balance)
+List<double> _generateBalanceHistory(
+  List<UserTransaction> transactions,
+  double currentBalance,
+) {
+  if (transactions.isEmpty) return [currentBalance];
 
-  const TransactionItem({super.key, required this.data, this.isNew = false});
+  // Sort transactions by date (oldest first)
+  final sorted = List<UserTransaction>.from(transactions)
+    ..sort((a, b) => a.date.compareTo(b.date));
 
-  @override
-  State<TransactionItem> createState() => _TransactionItemState();
-}
+  // Calculate historical balances
+  final history = <double>[];
+  double runningBalance = currentBalance;
 
-class _TransactionItemState extends State<TransactionItem>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<Color?> _colorAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-
-    // Oscillation between darkSurface and a slightly lighter/tinted color
-    _colorAnimation = ColorTween(
-      begin: AppTheme.darkSurface,
-      end: AppTheme.primaryGreen.withOpacity(0.15),
-    ).animate(_controller);
-
-    if (widget.isNew) {
-      _startAnimation();
+  // Work backwards from current balance
+  for (var i = sorted.length - 1; i >= 0; i--) {
+    final tx = sorted[i];
+    if (tx.type == TransactionType.received) {
+      runningBalance -= tx.amountBtc;
+    } else {
+      runningBalance += tx.amountBtc;
     }
   }
 
-  void _startAnimation() async {
-    // Repeat oscillation
-    _controller.repeat(reverse: true);
-
-    // Stop after 2 seconds
-    await Future.delayed(const Duration(seconds: 2));
-    if (mounted) {
-      _controller.stop();
-      _controller.reset(); // Return to original color
+  // Now build forward from the calculated starting balance
+  history.add(runningBalance);
+  for (final tx in sorted) {
+    if (tx.type == TransactionType.received) {
+      runningBalance += tx.amountBtc;
+    } else {
+      runningBalance -= tx.amountBtc;
     }
+    history.add(runningBalance);
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isReceived = widget.data['type'] == 'received';
-    return AnimatedBuilder(
-      animation: _colorAnimation,
-      builder: (context, child) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: _colorAnimation.value,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: child,
-        );
-      },
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: isReceived
-                  ? AppTheme.primaryGreen.withOpacity(0.1)
-                  : Colors.red.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              isReceived ? Icons.arrow_downward : Icons.arrow_upward,
-              color: isReceived ? AppTheme.primaryGreen : Colors.red,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isReceived ? 'Received Bitcoin' : 'Sent Bitcoin',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  widget.data['date'],
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            widget.data['amount'],
-            style: TextStyle(
-              color: isReceived ? AppTheme.primaryGreen : Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  return history;
 }

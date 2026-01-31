@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/providers/btc_price_provider.dart';
 import '../../src/rust/api.dart';
 
-class SendScreen extends StatefulWidget {
+class SendScreen extends ConsumerStatefulWidget {
   const SendScreen({super.key});
 
   @override
-  State<SendScreen> createState() => _SendScreenState();
+  ConsumerState<SendScreen> createState() => _SendScreenState();
 }
 
-class _SendScreenState extends State<SendScreen> {
+class _SendScreenState extends ConsumerState<SendScreen> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   bool _isLoading = false;
@@ -69,6 +71,12 @@ class _SendScreenState extends State<SendScreen> {
     final estimatedFee = (140 * _feeRate).ceil();
     final totalSats = amountSats + estimatedFee;
 
+    // Calculate USD values
+    final btcPrice = ref.read(btcPriceProvider).value ?? 0.0;
+    final amountUsd = (amountSats / 100000000) * btcPrice;
+    final feeUsd = (estimatedFee / 100000000) * btcPrice;
+    final totalUsd = (totalSats / 100000000) * btcPrice;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: AppTheme.darkSurface,
@@ -91,13 +99,20 @@ class _SendScreenState extends State<SendScreen> {
             ),
             const SizedBox(height: 24),
             _buildInfoRow("Recipient", _addressController.text),
-            _buildInfoRow("Amount", "$amountSats sats"),
+            _buildInfoRow(
+              "Amount",
+              "$amountSats sats\n(~\$${amountUsd.toStringAsFixed(2)})",
+            ),
             _buildInfoRow(
               "Est. Fee",
-              "$estimatedFee sats (${_feeRate.toStringAsFixed(1)} s/vB)",
+              "$estimatedFee sats (${_feeRate.toStringAsFixed(1)} s/vB)\n(~\$${feeUsd.toStringAsFixed(2)})",
             ),
             const Divider(color: Colors.white10, height: 32),
-            _buildInfoRow("Total", "$totalSats sats", isTotal: true),
+            _buildInfoRow(
+              "Total",
+              "$totalSats sats\n(~\$${totalUsd.toStringAsFixed(2)})",
+              isTotal: true,
+            ),
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
