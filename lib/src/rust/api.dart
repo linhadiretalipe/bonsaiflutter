@@ -6,7 +6,7 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 Future<void> startNodeService({
   required String dataDir,
@@ -33,6 +33,18 @@ Future<List<WalletTransactionInfo>> getWalletTransactions() =>
 
 /// Sync wallet - process pending blocks from the node
 Future<int> syncWallet() => RustLib.instance.api.crateApiSyncWallet();
+
+/// Create and sign a Bitcoin transaction
+/// Returns the transaction ID and raw hex for broadcast
+Future<SendTransactionResult> sendTransaction({
+  required String address,
+  required BigInt amountSats,
+  required double feeRate,
+}) => RustLib.instance.api.crateApiSendTransaction(
+  address: address,
+  amountSats: amountSats,
+  feeRate: feeRate,
+);
 
 /// Check if a wallet already exists in the data directory
 Future<bool> checkWalletExists({required String dataDir}) =>
@@ -127,6 +139,25 @@ class PeerDetailedInfo {
           userAgent == other.userAgent &&
           height == other.height &&
           isInbound == other.isInbound;
+}
+
+/// Send transaction result
+class SendTransactionResult {
+  final String txid;
+  final String rawTxHex;
+
+  const SendTransactionResult({required this.txid, required this.rawTxHex});
+
+  @override
+  int get hashCode => txid.hashCode ^ rawTxHex.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SendTransactionResult &&
+          runtimeType == other.runtimeType &&
+          txid == other.txid &&
+          rawTxHex == other.rawTxHex;
 }
 
 class WalletInfo {

@@ -174,7 +174,54 @@ impl WalletManager {
         
         scripts
     }
+
+    /// Create and sign a transaction to send BTC
+    pub fn send_transaction(
+        &mut self,
+        address: &str,
+        amount_sats: u64,
+        fee_rate_sats_per_vb: f32,
+    ) -> Result<(String, Vec<u8>), String> {
+        use bitcoin::Address;
+        use bdk_wallet::bitcoin::Amount;
+        
+        // Parse address
+        let recipient = Address::from_str(address)
+            .map_err(|e| format!("Invalid address: {}", e))?
+            .require_network(self.network)
+            .map_err(|e| format!("Address network mismatch: {}", e))?;
+        
+        // Build the transaction
+        let mut tx_builder = self.wallet.build_tx();
+        tx_builder
+            .add_recipient(recipient.script_pubkey(), Amount::from_sat(amount_sats))
+            .fee_rate(bdk_wallet::bitcoin::FeeRate::from_sat_per_vb(fee_rate_sats_per_vb as u64).unwrap());
+        
+        let mut psbt = tx_builder
+            .finish()
+            .map_err(|e| format!("Failed to build transaction: {}", e))?;
+        
+        // Sign the transaction
+        let finalized = self.wallet.sign(&mut psbt, bdk_wallet::SignOptions::default())
+            .map_err(|e| format!("Failed to sign transaction: {}", e))?;
+        
+        if !finalized {
+            return Err("Transaction not fully signed".to_string());
+        }
+        
+        // Extract the signed transaction
+        let tx = psbt.extract_tx()
+            .map_err(|e| format!("Failed to extract transaction: {}", e))?;
+        
+        let txid = tx.compute_txid().to_string();
+        
+        // Serialize the transaction for broadcast
+        let tx_bytes = bitcoin::consensus::serialize(&tx);
+        
+        Ok((txid, tx_bytes))
+    }
 }
+
 
 /// BlockConsumer implementation for the wallet
 /// This allows the node to send blocks directly to the wallet

@@ -235,7 +235,7 @@ class _NetworkScreenState extends ConsumerState<NetworkScreen> {
                 isRunning
                     ? (inIbd ? 'Initial Block Download...' : 'Synced')
                     : 'Turn on to start sync',
-                style: const TextStyle(color: Colors.white54, fontSize: 12),
+                style: const TextStyle(color: Colors.white54, fontSize: 10),
               ),
             ],
           ),

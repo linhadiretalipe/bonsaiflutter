@@ -39,6 +39,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   WalletInfo dco_decode_box_autoadd_wallet_info(dynamic raw);
 
   @protected
+  double dco_decode_f_32(dynamic raw);
+
+  @protected
   List<PeerDetailedInfo> dco_decode_list_peer_detailed_info(dynamic raw);
 
   @protected
@@ -69,6 +72,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PeerDetailedInfo dco_decode_peer_detailed_info(dynamic raw);
+
+  @protected
+  SendTransactionResult dco_decode_send_transaction_result(dynamic raw);
 
   @protected
   int dco_decode_u_32(dynamic raw);
@@ -110,6 +116,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   WalletInfo sse_decode_box_autoadd_wallet_info(SseDeserializer deserializer);
 
   @protected
+  double sse_decode_f_32(SseDeserializer deserializer);
+
+  @protected
   List<PeerDetailedInfo> sse_decode_list_peer_detailed_info(
     SseDeserializer deserializer,
   );
@@ -146,6 +155,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PeerDetailedInfo sse_decode_peer_detailed_info(SseDeserializer deserializer);
+
+  @protected
+  SendTransactionResult sse_decode_send_transaction_result(
+    SseDeserializer deserializer,
+  );
 
   @protected
   int sse_decode_u_32(SseDeserializer deserializer);
@@ -198,6 +212,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_f_32(double self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_peer_detailed_info(
     List<PeerDetailedInfo> self,
     SseSerializer serializer,
@@ -242,6 +259,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_peer_detailed_info(
     PeerDetailedInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_send_transaction_result(
+    SendTransactionResult self,
     SseSerializer serializer,
   );
 

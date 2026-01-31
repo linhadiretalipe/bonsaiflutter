@@ -66,7 +66,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -1825000028;
+  int get rustContentHash => -1274970010;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -97,6 +97,12 @@ abstract class RustLibApi extends BaseApi {
   Future<void> crateApiInitApp();
 
   Future<bool> crateApiIsNodeRunning();
+
+  Future<SendTransactionResult> crateApiSendTransaction({
+    required String address,
+    required BigInt amountSats,
+    required double feeRate,
+  });
 
   Future<void> crateApiStartNodeService({
     required String dataDir,
@@ -378,6 +384,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "is_node_running", argNames: []);
 
   @override
+  Future<SendTransactionResult> crateApiSendTransaction({
+    required String address,
+    required BigInt amountSats,
+    required double feeRate,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(address, serializer);
+          sse_encode_u_64(amountSats, serializer);
+          sse_encode_f_32(feeRate, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 10,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_send_transaction_result,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSendTransactionConstMeta,
+        argValues: [address, amountSats, feeRate],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSendTransactionConstMeta => const TaskConstMeta(
+    debugName: "send_transaction",
+    argNames: ["address", "amountSats", "feeRate"],
+  );
+
+  @override
   Future<void> crateApiStartNodeService({
     required String dataDir,
     required String network,
@@ -391,7 +433,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 11,
             port: port_,
           );
         },
@@ -420,7 +462,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 12,
             port: port_,
           );
         },
@@ -447,7 +489,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 13,
             port: port_,
           );
         },
@@ -499,6 +541,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   WalletInfo dco_decode_box_autoadd_wallet_info(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_wallet_info(raw);
+  }
+
+  @protected
+  double dco_decode_f_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as double;
   }
 
   @protected
@@ -581,6 +629,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       userAgent: dco_decode_String(arr[1]),
       height: dco_decode_u_32(arr[2]),
       isInbound: dco_decode_bool(arr[3]),
+    );
+  }
+
+  @protected
+  SendTransactionResult dco_decode_send_transaction_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return SendTransactionResult(
+      txid: dco_decode_String(arr[0]),
+      rawTxHex: dco_decode_String(arr[1]),
     );
   }
 
@@ -678,6 +738,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   WalletInfo sse_decode_box_autoadd_wallet_info(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_wallet_info(deserializer));
+  }
+
+  @protected
+  double sse_decode_f_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getFloat32();
   }
 
   @protected
@@ -811,6 +877,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  SendTransactionResult sse_decode_send_transaction_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_txid = sse_decode_String(deserializer);
+    var var_rawTxHex = sse_decode_String(deserializer);
+    return SendTransactionResult(txid: var_txid, rawTxHex: var_rawTxHex);
+  }
+
+  @protected
   int sse_decode_u_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint32();
@@ -916,6 +992,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_wallet_info(self, serializer);
+  }
+
+  @protected
+  void sse_encode_f_32(double self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putFloat32(self);
   }
 
   @protected
@@ -1030,6 +1112,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.userAgent, serializer);
     sse_encode_u_32(self.height, serializer);
     sse_encode_bool(self.isInbound, serializer);
+  }
+
+  @protected
+  void sse_encode_send_transaction_result(
+    SendTransactionResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.txid, serializer);
+    sse_encode_String(self.rawTxHex, serializer);
   }
 
   @protected

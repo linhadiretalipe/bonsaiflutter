@@ -5,6 +5,7 @@ import '../../core/providers/wallet_provider.dart';
 import '../../domain/models/transaction_model.dart';
 import 'receive_screen.dart';
 import 'send_screen.dart';
+import 'transaction_detail_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -246,16 +247,27 @@ class DashboardScreen extends ConsumerWidget {
                       final dateStr =
                           "${tx.date.day}/${tx.date.month} ${tx.date.hour}:${tx.date.minute}";
 
-                      return TransactionItem(
-                        key: ValueKey(tx.id),
-                        data: {
-                          'type': tx.type == TransactionType.received
-                              ? 'received'
-                              : 'sent',
-                          'amount': amountStr,
-                          'date': dateStr, // Or use a proper formatter
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  TransactionDetailScreen(transaction: tx),
+                            ),
+                          );
                         },
-                        isNew: tx.isNew,
+                        child: TransactionItem(
+                          key: ValueKey(tx.id),
+                          data: {
+                            'type': tx.type == TransactionType.received
+                                ? 'received'
+                                : 'sent',
+                            'amount': amountStr,
+                            'date': dateStr,
+                          },
+                          isNew: tx.isNew,
+                        ),
                       );
                     },
                   ),

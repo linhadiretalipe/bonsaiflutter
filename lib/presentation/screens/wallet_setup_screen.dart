@@ -248,14 +248,14 @@ class _WalletSetupScreenState extends State<WalletSetupScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        TextButton.icon(
-          onPressed: _copyMnemonic,
-          icon: const Icon(Icons.copy, color: AppTheme.primaryGreen),
-          label: const Text(
-            'Copy to Clipboard',
-            style: TextStyle(color: AppTheme.primaryGreen),
-          ),
-        ),
+        // TextButton.icon(
+        //   onPressed: _copyMnemonic,
+        //   icon: const Icon(Icons.copy, color: AppTheme.primaryGreen),
+        //   label: const Text(
+        //     'Copy to Clipboard',
+        //     style: TextStyle(color: AppTheme.primaryGreen),
+        //   ),
+        // ),
         const Spacer(),
         CheckboxListTile(
           value: _confirmed,

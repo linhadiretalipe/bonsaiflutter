@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../core/theme/app_theme.dart';
+import '../../src/rust/api.dart';
 
 class SendScreen extends StatefulWidget {
   const SendScreen({super.key});
@@ -13,6 +14,23 @@ class _SendScreenState extends State<SendScreen> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   bool _isLoading = false;
+  double _balance = 0;
+  double _feeRate = 1.0; // Default fee rate in sats/vB
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBalance();
+  }
+
+  Future<void> _loadBalance() async {
+    final info = await getWalletInfo();
+    if (info != null && mounted) {
+      setState(() {
+        _balance = info.balanceSats.toInt() / 100000000.0;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -22,7 +40,6 @@ class _SendScreenState extends State<SendScreen> {
   }
 
   void _sendTransaction() async {
-    // Basic validation
     if (_addressController.text.isEmpty || _amountController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -33,24 +50,50 @@ class _SendScreenState extends State<SendScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
-
-    // TODO: Call Rust bridge to send transaction
-    await Future.delayed(const Duration(seconds: 2)); // Mock delay
-
-    if (mounted) {
-      setState(() => _isLoading = false);
+    final amountSats = int.tryParse(_amountController.text) ?? 0;
+    if (amountSats <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Transaction Sent! (Mock)"),
-          backgroundColor: AppTheme.primaryGreen,
+          content: Text("Invalid amount"),
+          backgroundColor: Colors.redAccent,
         ),
       );
-      Navigator.pop(context, {
-        'success': true,
-        'amountSats': _amountController.text,
-        'address': _addressController.text,
-      });
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final result = await sendTransaction(
+        address: _addressController.text.trim(),
+        amountSats: BigInt.from(amountSats),
+        feeRate: _feeRate,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Transaction created! TXID: ${result.txid.substring(0, 8)}...",
+            ),
+            backgroundColor: AppTheme.primaryGreen,
+          ),
+        );
+        Navigator.pop(context, {'success': true, 'txid': result.txid});
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error: ${e.toString()}"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -71,6 +114,34 @@ class _SendScreenState extends State<SendScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Balance display
+            Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 24),
+              decoration: BoxDecoration(
+                color: AppTheme.darkSurface,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Available Balance',
+                    style: TextStyle(color: Colors.white54, fontSize: 14),
+                  ),
+                  Text(
+                    '${_balance.toStringAsFixed(8)} BTC',
+                    style: const TextStyle(
+                      color: AppTheme.primaryGreen,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Berkeley Mono',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             // Address Input
             const Text(
               "RECIPIENT ADDRESS",

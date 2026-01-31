@@ -175,6 +175,40 @@ pub async fn sync_wallet() -> Result<u32, String> {
     Err("Wallet not initialized".to_string())
 }
 
+/// Send transaction result
+#[derive(Debug, Clone)]
+pub struct SendTransactionResult {
+    pub txid: String,
+    pub raw_tx_hex: String,
+}
+
+/// Create and sign a Bitcoin transaction
+/// Returns the transaction ID and raw hex for broadcast
+pub async fn send_transaction(
+    address: String,
+    amount_sats: u64,
+    fee_rate: f32,
+) -> Result<SendTransactionResult, String> {
+    // Create and sign transaction in wallet
+    let (txid, tx_bytes) = {
+        let mut handle = WALLET_MANAGER.write().await;
+        let manager = handle.as_mut()
+            .ok_or("Wallet not initialized")?;
+        manager.send_transaction(&address, amount_sats, fee_rate)?
+    };
+    
+    // Convert tx bytes to hex for broadcast via external service
+    let raw_tx_hex = hex::encode(&tx_bytes);
+    
+    // TODO: In future, broadcast via floresta node when API is available
+    // For now, return the raw tx for external broadcast (e.g., mempool.space API)
+    
+    Ok(SendTransactionResult {
+        txid,
+        raw_tx_hex,
+    })
+}
+
 
 /// Check if a wallet already exists in the data directory
 pub fn check_wallet_exists(data_dir: String) -> bool {
